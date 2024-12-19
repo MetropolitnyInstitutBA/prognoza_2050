@@ -17,11 +17,6 @@
       height: 100vh;
       background-color: transparent;
     }
-    svg {
-      width: 100%;
-      max-width: 1200px; /* Optional: Limit max width */
-      height: auto;
-    }
     .arrow-label {
       font: bold 14px sans-serif;
       text-anchor: middle;
@@ -108,97 +103,113 @@
       }
     };
 
-    const width = 928;
-    const height = 600;
+    const margin = 0.02;
 
-    const svg = d3.select("body")
-      .append("svg")
-      .attr("viewBox", `0 0 ${width} ${height + 50}`)
-      .attr("preserveAspectRatio", "xMidYMid meet");
+    const container = d3.select("body").append("div").style("width", "100%").style("height", "100%");
 
-    const allNodes = Array.from(new Set([...data.BAU_2050, ...data.LULC]));
-    const nodeIds = Object.fromEntries(allNodes.map((name, i) => [name, i]));
+    function renderChart() {
+      container.select("svg").remove(); // Clear existing chart
 
-    const nodes = allNodes.map(name => ({
-      name,
-      color: data.label_colour_mapping[name] || "#cccccc"
-    }));
+      const containerWidth = container.node().clientWidth;
+      const containerHeight = container.node().clientHeight;
 
-    const links = data.BAU_2050.map((source, i) => ({
-      source: nodeIds[source],
-      target: nodeIds[data.LULC[i]],
-      value: data.area[i],
-      sourceColor: data.label_colour_mapping[source] || "#cccccc",
-      targetColor: data.label_colour_mapping[data.LULC[i]] || "#cccccc"
-    }));
+      const width = containerWidth * (1 - margin * 2);
+      const height = containerHeight * (1 - margin * 2);
 
-    const sankey = d3.sankey()
-      .nodeWidth(15)
-      .nodePadding(10)
-      .extent([[1, 1], [width - 1, height - 6]]);
+      const svg = container.append("svg")
+        .attr("viewBox", `0 0 ${containerWidth} ${containerHeight}`)
+        .attr("preserveAspectRatio", "xMidYMid meet");
 
-    const { nodes: sankeyNodes, links: sankeyLinks } = sankey({
-      nodes: nodes.map(d => Object.assign({}, d)),
-      links: links.map(d => Object.assign({}, d))
-    });
+      const chartGroup = svg.append("g")
+        .attr("transform", `translate(${containerWidth * margin}, ${containerHeight * margin})`);
 
-    const defs = svg.append("defs");
-    sankeyLinks.forEach((link, i) => {
-      const gradientId = `gradient-${i}`;
-      const gradient = defs.append("linearGradient")
-        .attr("id", gradientId)
-        .attr("gradientUnits", "userSpaceOnUse")
-        .attr("x1", link.source.x1)
-        .attr("x2", link.target.x0)
-        .attr("y1", (link.source.y0 + link.source.y1) / 2)
-        .attr("y2", (link.target.y0 + link.target.y1) / 2);
+      const allNodes = Array.from(new Set([...data.BAU_2050, ...data.LULC]));
+      const nodeIds = Object.fromEntries(allNodes.map((name, i) => [name, i]));
 
-      gradient.append("stop")
-        .attr("offset", "0%")
-        .attr("stop-color", link.sourceColor);
+      const nodes = allNodes.map(name => ({
+        name,
+        color: data.label_colour_mapping[name] || "#cccccc"
+      }));
 
-      gradient.append("stop")
-        .attr("offset", "100%")
-        .attr("stop-color", link.targetColor);
+      const links = data.BAU_2050.map((source, i) => ({
+        source: nodeIds[source],
+        target: nodeIds[data.LULC[i]],
+        value: data.area[i],
+        sourceColor: data.label_colour_mapping[source] || "#cccccc",
+        targetColor: data.label_colour_mapping[data.LULC[i]] || "#cccccc"
+      }));
 
-      link.gradient = gradientId;
-    });
+      const sankey = d3.sankey()
+        .nodeWidth(15)
+        .nodePadding(10)
+        .extent([[0, 0], [width, height]]);
 
-    svg.append("g")
-      .selectAll("path")
-      .data(sankeyLinks)
-      .join("path")
-      .attr("class", "link")
-      .attr("d", d3.sankeyLinkHorizontal())
-      .attr("stroke", d => `url(#${d.gradient})`)
-      .attr("stroke-width", d => Math.max(1, d.width))
-      .attr("fill", "none");
+      const { nodes: sankeyNodes, links: sankeyLinks } = sankey({
+        nodes: nodes.map(d => Object.assign({}, d)),
+        links: links.map(d => Object.assign({}, d))
+      });
 
-    const nodeGroup = svg.append("g")
-      .selectAll("g")
-      .data(sankeyNodes)
-      .join("g");
+      const defs = chartGroup.append("defs");
+      sankeyLinks.forEach((link, i) => {
+        const gradientId = `gradient-${i}`;
+        const gradient = defs.append("linearGradient")
+          .attr("id", gradientId)
+          .attr("gradientUnits", "userSpaceOnUse")
+          .attr("x1", link.source.x1)
+          .attr("x2", link.target.x0)
+          .attr("y1", (link.source.y0 + link.source.y1) / 2)
+          .attr("y2", (link.target.y0 + link.target.y1) / 2);
 
-    nodeGroup.append("rect")
-      .attr("x", d => d.x0)
-      .attr("y", d => d.y0)
-      .attr("width", d => d.x1 - d.x0)
-      .attr("height", d => d.y1 - d.y0)
-      .attr("fill", d => d.color);
+        gradient.append("stop")
+          .attr("offset", "0%")
+          .attr("stop-color", link.sourceColor);
 
-    nodeGroup.append("text")
-      .attr("x", d => (d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6))
-      .attr("y", d => (d.y1 + d.y0) / 2)
-      .attr("dy", "0.35em")
-      .attr("text-anchor", d => (d.x0 < width / 2 ? "start" : "end"))
-      .text(d => d.name)
-      .attr("class", "label");
+        gradient.append("stop")
+          .attr("offset", "100%")
+          .attr("stop-color", link.targetColor);
 
-    svg.append("text")
-      .attr("x", width / 2)
-      .attr("y", height + 25)
-      .attr("class", "arrow-label")
-      .text("Navrhované   →   Existujúce ");
+        link.gradient = gradientId;
+      });
+
+      chartGroup.append("g")
+        .selectAll("path")
+        .data(sankeyLinks)
+        .join("path")
+        .attr("class", "link")
+        .attr("d", d3.sankeyLinkHorizontal())
+        .attr("stroke", d => `url(#${d.gradient})`)
+        .attr("stroke-width", d => Math.max(1, d.width))
+        .attr("fill", "none");
+
+      const nodeGroup = chartGroup.append("g")
+        .selectAll("g")
+        .data(sankeyNodes)
+        .join("g");
+
+      nodeGroup.append("rect")
+        .attr("x", d => d.x0)
+        .attr("y", d => d.y0)
+        .attr("width", d => d.x1 - d.x0)
+        .attr("height", d => d.y1 - d.y0)
+        .attr("fill", d => d.color);
+
+      nodeGroup.append("text")
+        .attr("x", d => (d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6))
+        .attr("y", d => (d.y1 + d.y0) / 2)
+        .attr("dy", "0.35em")
+        .attr("text-anchor", d => (d.x0 < width / 2 ? "start" : "end"))
+        .text(d => d.name)
+        .attr("class", "label");
+
+      chartGroup.append("text")
+        .attr("x", width / 2)
+        .attr("y", height + 25)
+        .attr("class", "arrow-label")
+        .text("Navrhované   →   Existujúce ");
+    }
+
+    window.addEventListener("resize", renderChart);
+    renderChart();
   </script>
 </body>
 </html>
