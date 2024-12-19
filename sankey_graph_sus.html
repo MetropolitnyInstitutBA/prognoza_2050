@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sankey Diagram</title>
+  <title>Sankey Diagram with Margins</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
   <style>
@@ -16,11 +16,6 @@
       align-items: center;
       height: 100vh;
       background-color: transparent;
-    }
-    svg {
-      width: 100%;
-      max-width: 1200px; /* Optional: Limit max width */
-      height: auto;
     }
     .arrow-label {
       font: bold 14px sans-serif;
@@ -59,7 +54,7 @@
         "mestská a krajiná zeleň (+2440 ha)",
         "voľný čas a šport (+267 ha)",
         "voľný čas a šport (+267 ha)",
-        "voľný čas a šport (+267 ha)",
+        "voľný čas a šport (+267 ha)"
       ],
       LULC: [
         "orná pôda (-2416 ha)",
@@ -78,7 +73,7 @@
         "budovy výroby (-9 ha)",
         "orná pôda (-2416 ha)",
         "ruderálna vegetácia (-967 ha)",
-        "areály občianskej vybavenosti (-60 ha)",
+        "areály občianskej vybavenosti (-60 ha)"
       ],
       area: [
         916.7099,
@@ -114,101 +109,112 @@
       }
     };
 
-    const width = 928;
-    const height = 600;
+    const container = d3.select("body").append("div").style("width", "100%").style("height", "100%");
 
-    const svg = d3.select("body")
-      .append("svg")
-      .attr("viewBox", `0 0 ${width} ${height + 50}`)
-      .attr("preserveAspectRatio", "xMidYMid meet");
+    function renderChart() {
+      container.select("svg").remove(); // Clear existing chart
 
-    const allNodes = Array.from(new Set([...data.OPT_2050, ...data.LULC]));
-    const nodeIds = Object.fromEntries(allNodes.map((name, i) => [name, i]));
+      const containerWidth = container.node().clientWidth;
+      const containerHeight = container.node().clientHeight;
 
-    const nodes = allNodes.map(name => ({
-      name,
-      color: data.label_colour_mapping[name] || "#cccccc"
-    }));
+      const margin = 0.02; // 5% margin on each side
+      const width = containerWidth * (1 - margin * 2);
+      const height = containerHeight * (1 - margin * 2);
 
-    const links = data.OPT_2050.map((source, i) => ({
-      source: nodeIds[source],
-      target: nodeIds[data.LULC[i]],
-      value: data.area[i],
-      sourceColor: data.label_colour_mapping[source] || "#cccccc",
-      targetColor: data.label_colour_mapping[data.LULC[i]] || "#cccccc"
-    }));
+      const svg = container.append("svg")
+        .attr("viewBox", `0 0 ${containerWidth} ${containerHeight}`)
+        .attr("preserveAspectRatio", "xMidYMid meet");
 
-    const sankey = d3.sankey()
-      .nodeWidth(15)
-      .nodePadding(10)
-      .extent([[1, 1], [width - 1, height - 6]]);
+      const chartGroup = svg.append("g")
+        .attr("transform", `translate(${containerWidth * margin}, ${containerHeight * margin})`);
 
-    const { nodes: sankeyNodes, links: sankeyLinks } = sankey({
-      nodes: nodes.map(d => Object.assign({}, d)),
-      links: links.map(d => Object.assign({}, d))
-    });
+      const allNodes = Array.from(new Set([...data.OPT_2050, ...data.LULC]));
+      const nodeIds = Object.fromEntries(allNodes.map((name, i) => [name, i]));
 
-    // Define gradients for links
-    const defs = svg.append("defs");
-    sankeyLinks.forEach((link, i) => {
-      const gradientId = `gradient-${i}`;
-      const gradient = defs.append("linearGradient")
-        .attr("id", gradientId)
-        .attr("gradientUnits", "userSpaceOnUse")
-        .attr("x1", link.source.x1)
-        .attr("x2", link.target.x0)
-        .attr("y1", (link.source.y0 + link.source.y1) / 2)
-        .attr("y2", (link.target.y0 + link.target.y1) / 2);
+      const nodes = allNodes.map(name => ({
+        name,
+        color: data.label_colour_mapping[name] || "#cccccc"
+      }));
 
-      gradient.append("stop")
-        .attr("offset", "0%")
-        .attr("stop-color", link.sourceColor);
+      const links = data.OPT_2050.map((source, i) => ({
+        source: nodeIds[source],
+        target: nodeIds[data.LULC[i]],
+        value: data.area[i],
+        sourceColor: data.label_colour_mapping[source] || "#cccccc",
+        targetColor: data.label_colour_mapping[data.LULC[i]] || "#cccccc"
+      }));
 
-      gradient.append("stop")
-        .attr("offset", "100%")
-        .attr("stop-color", link.targetColor);
+      const sankey = d3.sankey()
+        .nodeWidth(15)
+        .nodePadding(10)
+        .extent([[0, 0], [width, height]]);
 
-      link.gradient = gradientId;
-    });
+      const { nodes: sankeyNodes, links: sankeyLinks } = sankey({
+        nodes: nodes.map(d => Object.assign({}, d)),
+        links: links.map(d => Object.assign({}, d))
+      });
 
-    // Render links
-    svg.append("g")
-      .selectAll("path")
-      .data(sankeyLinks)
-      .join("path")
-      .attr("class", "link")
-      .attr("d", d3.sankeyLinkHorizontal())
-      .attr("stroke", d => `url(#${d.gradient})`)
-      .attr("stroke-width", d => Math.max(1, d.width))
-      .attr("fill", "none");
+      const defs = chartGroup.append("defs");
+      sankeyLinks.forEach((link, i) => {
+        const gradientId = `gradient-${i}`;
+        const gradient = defs.append("linearGradient")
+          .attr("id", gradientId)
+          .attr("gradientUnits", "userSpaceOnUse")
+          .attr("x1", link.source.x1)
+          .attr("x2", link.target.x0)
+          .attr("y1", (link.source.y0 + link.source.y1) / 2)
+          .attr("y2", (link.target.y0 + link.target.y1) / 2);
 
-    // Render nodes
-    const nodeGroup = svg.append("g")
-      .selectAll("g")
-      .data(sankeyNodes)
-      .join("g");
+        gradient.append("stop")
+          .attr("offset", "0%")
+          .attr("stop-color", link.sourceColor);
 
-    nodeGroup.append("rect")
-      .attr("x", d => d.x0)
-      .attr("y", d => d.y0)
-      .attr("width", d => d.x1 - d.x0)
-      .attr("height", d => d.y1 - d.y0)
-      .attr("fill", d => d.color);
+        gradient.append("stop")
+          .attr("offset", "100%")
+          .attr("stop-color", link.targetColor);
 
-    nodeGroup.append("text")
-      .attr("x", d => (d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6))
-      .attr("y", d => (d.y1 + d.y0) / 2)
-      .attr("dy", "0.35em")
-      .attr("text-anchor", d => (d.x0 < width / 2 ? "start" : "end"))
-      .text(d => d.name)
-      .attr("class", "label");
+        link.gradient = gradientId;
+      });
 
-    // Add single arrow with label below the diagram
-    svg.append("text")
-      .attr("x", width / 2)
-      .attr("y", height + 25)
-      .attr("class", "arrow-label")
-      .text("Navrhované   →   Existujúce ");
+      chartGroup.append("g")
+        .selectAll("path")
+        .data(sankeyLinks)
+        .join("path")
+        .attr("class", "link")
+        .attr("d", d3.sankeyLinkHorizontal())
+        .attr("stroke", d => `url(#${d.gradient})`)
+        .attr("stroke-width", d => Math.max(1, d.width))
+        .attr("fill", "none");
+
+      const nodeGroup = chartGroup.append("g")
+        .selectAll("g")
+        .data(sankeyNodes)
+        .join("g");
+
+      nodeGroup.append("rect")
+        .attr("x", d => d.x0)
+        .attr("y", d => d.y0)
+        .attr("width", d => d.x1 - d.x0)
+        .attr("height", d => d.y1 - d.y0)
+        .attr("fill", d => d.color);
+
+      nodeGroup.append("text")
+        .attr("x", d => (d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6))
+        .attr("y", d => (d.y1 + d.y0) / 2)
+        .attr("dy", "0.35em")
+        .attr("text-anchor", d => (d.x0 < width / 2 ? "start" : "end"))
+        .text(d => d.name)
+        .attr("class", "label");
+
+      chartGroup.append("text")
+        .attr("x", width / 2)
+        .attr("y", height + 25)
+        .attr("class", "arrow-label")
+        .text("Navrhované   →   Existujúce ");
+    }
+
+    window.addEventListener("resize", renderChart);
+    renderChart();
   </script>
 </body>
 </html>
