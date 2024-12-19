@@ -9,22 +9,34 @@
   <style>
     body {
       font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f9f9f9;
     }
-    .node rect {
-      stroke: #000;
-      shape-rendering: crispEdges;
-    }
-    .link {
-      fill: none;
-      stroke-opacity: 0.5;
-    }
-    .label {
-      font: 12px sans-serif;
+    svg {
+      width: 100%;
+      max-width: 1200px; /* Optional: Limit max width */
+      height: auto;
     }
     .arrow-label {
       font: bold 14px sans-serif;
       text-anchor: middle;
       fill: #333;
+    }
+    .node rect {
+      stroke: #000;
+      shape-rendering: crispEdges;
+    }
+    .label {
+      font: 12px sans-serif;
+    }
+    .link {
+      fill: none;
+      stroke-opacity: 0.5;
     }
   </style>
 </head>
@@ -107,8 +119,8 @@
 
     const svg = d3.select("body")
       .append("svg")
-      .attr("width", width)
-      .attr("height", height + 50); // Add space for the arrow below
+      .attr("viewBox", `0 0 ${width} ${height + 50}`)
+      .attr("preserveAspectRatio", "xMidYMid meet");
 
     const allNodes = Array.from(new Set([...data.OPT_2050, ...data.LULC]));
     const nodeIds = Object.fromEntries(allNodes.map((name, i) => [name, i]));
@@ -192,10 +204,7 @@
       .attr("class", "label");
 
     // Add single arrow with label below the diagram
-    const arrowGroup = svg.append("g");
-	
-    // Arrow label
-    arrowGroup.append("text")
+    svg.append("text")
       .attr("x", width / 2)
       .attr("y", height + 25)
       .attr("class", "arrow-label")
